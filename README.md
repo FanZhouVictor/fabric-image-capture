@@ -16,13 +16,13 @@ Hardware:
 
 Software:
 
-- macOS Monterey or newer
-- `python3` (preinstalled on recent macOS)
-- `gphoto2`:
-  ```bash
-  brew install gphoto2
-  gphoto2 --version
-  ```
+- macOS **Monterey (12.0)** or newer
+- Xcode Command Line Tools (`xcode-select --install`)
+- [Homebrew](https://brew.sh)
+- `gphoto2` (`brew install gphoto2`)
+- `python3` (preinstalled on macOS Monterey+)
+
+If this is the first time the MacBook has been set up for this study, walk through [`docs/environment_setup.md`](docs/environment_setup.md) once — it covers Homebrew, gphoto2, macOS permissions, sleep / notification settings, and an optional permanent fix for the `ptpcamerad` USB-claim race.
 
 You must **quit EOS Utility 3** before running anything. Only one process can own the camera over USB at a time, and the scripts refuse to run while EOS Utility is open.
 
