@@ -41,7 +41,10 @@ You must **quit EOS Utility 3** before running anything. Only one process can ow
 4. Stage one specimen on the jig and acquire its four frames:
    ```bash
    ./scripts/camera/acquire_case.sh \
-       --test C187 --coupon parent --treatment none --stage pre_exposure
+       --test C187 
+       --coupon parent 
+       --treatment none 
+       --stage pre_exposure
    ```
    The script captures two frames, then prompts you to physically rotate the specimen 180° and press enter, then captures two more.
 5. Captured images land under `data/raw/camera_sessions/YYYY-MM-DD/<case>_HHMMSS/rot_0deg/` and `rot_180deg/`.
