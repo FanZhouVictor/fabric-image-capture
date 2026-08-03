@@ -23,6 +23,9 @@
 # where <case_slug> = <test>_<coupon>_<treatment>_<stage>
 #   test      Cxxx          (combustion-test ID)
 #   coupon    parent | left | center | right
+#             | left_center | center_right | left_center_right
+#               (combined uncut-adjacent coupon strips: two or three
+#                length-adjacent positions left joined as a single piece)
 #   treatment as_exposed | env_aging | PER | advanced_cleaning | none
 #   stage     pre_exposure | post_exposure | post_treatment
 #
@@ -31,8 +34,9 @@
 #   acquire_case.sh --test C186 --coupon parent --treatment none          --stage pre_exposure
 #   acquire_case.sh --test C186 --coupon parent --treatment as_exposed    --stage post_exposure
 #   acquire_case.sh --test C186 --coupon parent --treatment env_aging_7d  --stage post_exposure_aged
-#   acquire_case.sh --test C186 --coupon left   --treatment env_aging_3d  --stage post_treatment
-#   acquire_case.sh --test C186 --coupon left   --treatment PER           --stage post_treatment
+#   acquire_case.sh --test C186 --coupon left        --treatment env_aging_3d  --stage post_treatment
+#   acquire_case.sh --test C186 --coupon left         --treatment PER           --stage post_treatment
+#   acquire_case.sh --test C194 --coupon left_center  --treatment env_aging_3d  --stage post_treatment   # left+center left joined (length cut skipped)
 #
 # Optional overrides:
 #   --reps-per-rotation N    default 2; matches SELECTED_REPLICATES_PER_ROTATION
@@ -81,7 +85,11 @@ done
 
 # Validate the three-axis identity.
 [[ -n "$TEST" && "$TEST" =~ ^C[0-9]+$ ]]                        || { echo "--test required, format Cxxx" >&2; exit 1; }
-[[ "$COUPON"    =~ ^(parent|left|center|right)$ ]]              || { echo "--coupon: parent|left|center|right" >&2; exit 1; }
+# coupon positions: single (parent|left|center|right) or a combined uncut-adjacent
+# strip (left_center | center_right | left_center_right) when adjacent coupons were
+# left joined rather than cut apart. Non-adjacent joins (e.g. left+right) are not valid.
+[[ "$COUPON"    =~ ^(parent|left|center|right|left_center|center_right|left_center_right)$ ]] \
+                                                                || { echo "--coupon: parent|left|center|right | left_center|center_right|left_center_right" >&2; exit 1; }
 # treatment slugs: as_exposed | env_aging_<N>d (any positive integer N) | PER | advanced_cleaning | none
 [[ "$TREATMENT" =~ ^(as_exposed|env_aging_[0-9]+d|PER|advanced_cleaning|none)$ ]] \
                                                                 || { echo "--treatment: as_exposed | env_aging_<N>d | PER | advanced_cleaning | none" >&2; exit 1; }

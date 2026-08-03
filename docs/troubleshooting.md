@@ -53,7 +53,20 @@ Check in order:
   5. Camera is awake. If Auto Power Off triggered, half-press the camera shutter to wake it, then re-run.
 ```
 
-## 6. Where did my captures go?
+## 6. `acquire_batch.sh` says `unknown argument: …`
+
+Almost always a `--sample` tuple that got split into separate shell words. Each tuple must be **one word with no spaces around the colons**, and multi-line commands need a **space before each trailing `\`**:
+
+```
+❌  --sample C205-2: as_exposed: post_exposure     # spaces break the tuple
+❌  --sample C205-1:as_exposed:post_exposure\      # '\' glued to the text joins
+                                                   # this line with the next
+✅  --sample C205-1:as_exposed:post_exposure \
+```
+
+Retype the command with the tuples fixed and re-run.
+
+## 7. Where did my captures go?
 
 Captures for one case land here:
 
@@ -65,3 +78,12 @@ data/raw/camera_sessions/<DATE>/<case_slug>_<HHMMSS>/
 ```
 
 The `case_manifest.json` next to the rotation folders lists every captured basename for that case. Open it with any text editor if you want to confirm all four frames are there before you tear down the jig.
+
+Batch captures land in a flat folder (no rotation subfolders — batch frames are 0° only):
+
+```
+data/raw/camera_sessions/<DATE>/<batch_slug>_<HHMMSS>/
+  batch_manifest.json      <- position → identity table + frame list
+  <DATE>-<HHMMSS>-<batch_slug>_r01.{cr3,jpg,log}
+  <DATE>-<HHMMSS>-<batch_slug>_r02.{cr3,jpg,log}
+```

@@ -2,6 +2,8 @@
 
 `acquire_case.sh` takes four flags that identify *what* you are capturing. The script validates them against the controlled vocabulary below and will refuse to run on any invalid combination. Pick a value from each table.
 
+`acquire_batch.sh` (multi-piece batch papers) uses the same `--treatment` and `--stage` vocabulary inside its `--sample <pieceID>:<treatment>:<stage>` tuples; the coupon axis does not apply to batch pieces. See [`docs/acquisition_workflow.md`](acquisition_workflow.md) § 2-B.
+
 If you are unsure which combination applies, ask Fan before firing the capture — the four flags get baked into the filename and the folder structure and are very awkward to rename after the fact.
 
 ---
@@ -22,8 +24,13 @@ If you are unsure which combination applies, ask Fan before firing the capture �
 | `left` | The leftmost strip cut from the parent along its length axis. Use only at stage `post_treatment`. |
 | `center` | The middle strip cut from the parent along its length axis. Use only at stage `post_treatment`. |
 | `right` | The rightmost strip cut from the parent along its length axis. Use only at stage `post_treatment`. |
+| `left_center` | A single combined strip spanning the left and center positions, left joined instead of cut apart. Use only at stage `post_treatment`. |
+| `center_right` | A single combined strip spanning the center and right positions, left joined instead of cut apart. Use only at stage `post_treatment`. |
+| `left_center_right` | A single combined strip spanning all three positions (the length cuts were skipped entirely). Use only at stage `post_treatment`. |
 
 Left / center / right are defined when the parent is viewed with its `C###-top` label at the top.
+
+Combined positions exist for when a length cut is intentionally skipped, so two or three adjacent positions are treated and imaged as one piece. Only **contiguous** runs are valid — there is no `left_right`, because a non-adjacent join is physically impossible. A combined strip is staged and captured exactly like a single-position strip.
 
 ---
 
@@ -46,7 +53,7 @@ Left / center / right are defined when the parent is viewed with its `C###-top` 
 | `pre_exposure` | Parent specimen straight out of the conditioning chamber, before any smoke exposure. Requires `--coupon parent --treatment none`. |
 | `post_exposure` | Parent specimen immediately after the smoke chamber, still uncut. Requires `--coupon parent --treatment as_exposed`. |
 | `post_exposure_aged` | Parent specimen after a whole-parent aging step, still uncut. Requires `--coupon parent` and `--treatment env_aging_<N>d`. |
-| `post_treatment` | One coupon strip after its most recent treatment, before width-cutting. Requires `--coupon` ∈ {`left`, `center`, `right`} and `--treatment` ≠ `none`. |
+| `post_treatment` | One coupon strip after its most recent treatment, before width-cutting. Requires `--coupon` ∈ {`left`, `center`, `right`, `left_center`, `center_right`, `left_center_right`} and `--treatment` ≠ `none`. |
 
 ---
 
@@ -89,6 +96,10 @@ The script enforces the cross-axis rules above. The four combinations you will s
 # 7. Left strip, untreated baseline (smoke-exposed strip, no further treatment)
 ./scripts/camera/acquire_case.sh \
     --test C189 --coupon left --treatment as_exposed --stage post_treatment
+
+# 8. Combined left+center strip (length cut skipped), after 3-day aging (stage D)
+./scripts/camera/acquire_case.sh \
+    --test C194 --coupon left_center --treatment env_aging_3d --stage post_treatment
 ```
 
 ## What the script will reject

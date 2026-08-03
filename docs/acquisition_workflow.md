@@ -4,6 +4,8 @@ Step-by-step procedure for the operator. Read this once end-to-end before your f
 
 A **case** is one (specimen, imaging stage) pair — for example: the parent specimen C187 before exposure, or the left coupon strip after a PER treatment. `acquire_case.sh` captures all four replicate frames for one case in a single run.
 
+When several fabric pieces are staged together on one paper and photographed in a single frame, use `acquire_batch.sh` instead — one command per paper. See [§ 2-B](#2-b-multi-piece-batch-acquisition-acquire_batchsh).
+
 ---
 
 ## 0. Hardware and software prerequisites
@@ -111,6 +113,89 @@ Each `.cr3` is the raw image. The matching `.jpg` is the in-camera small preview
 
 ---
 
+## 2-B. Multi-piece batch acquisition (`acquire_batch.sh`)
+
+When several fabric pieces are staged together on one paper and photographed in a single frame, use `acquire_batch.sh` instead of the per-case driver — **one command per paper**, regardless of how many pieces are on it. Pieces are identified by sample ID + sub ID: `C205-1` is piece 1 of combustion test C205. Mixed states on one paper are allowed — each position declares its own (piece ID, treatment, stage) tuple.
+
+Batch frames are captured at **0° only** — there is no 180° rotation pass (protocol decision, 2026-07-13). The four-frame rotation protocol applies to single-sample cases, not batch papers.
+
+### 2-B.a Stage the batch on the jig
+
+1. Place the pieces on the BWblue backdrop, front face up, tops up (piece label or stitched-fiducial edge toward the top of the sheet).
+2. Arrange them in the order you will declare on the command line: **reading order — top-left → right, row-major** (like reading a page).
+3. Keep the ColorChecker at the right edge of the sheet, as for single cases.
+4. Verify every piece lies flat with no curling and no overlap.
+
+### 2-B.b Fire the acquisition
+
+```bash
+./scripts/camera/acquire_batch.sh \
+    --sample C205-1:none:pre_exposure \
+    --sample C205-2:none:pre_exposure \
+    --sample C205-3:none:pre_exposure \
+    --sample C205-4:none:pre_exposure \
+    --sample C205-5:none:pre_exposure
+```
+
+Each `--sample` is `<pieceID>:<treatment>:<stage>`. The piece ID must match `C<test>-<sub>` (sub = positive integer); treatment and stage use the same controlled vocabulary as `acquire_case.sh` (see [`docs/vocabulary.md`](vocabulary.md) — the coupon axis does not apply to batch pieces).
+
+**Tuple syntax — one word, no spaces.** Each `--sample` value must be a single shell word with no spaces around the colons. A space after a colon splits the tuple into separate arguments and the script aborts with `unknown argument: …`. When continuing a command across lines, keep a space before each trailing `\`:
+
+```
+❌  --sample C205-2: as_exposed: post_exposure     # spaces break the tuple
+❌  --sample C205-1:as_exposed:post_exposure\      # '\' glued to the text joins
+                                                   # this line with the next
+✅  --sample C205-1:as_exposed:post_exposure \
+```
+
+**Allowed treatment × stage combinations** (any other pair is rejected):
+
+| Stage | Allowed treatment(s) | Piece state being photographed |
+|---|---|---|
+| `pre_exposure` | `none` | before any smoke exposure |
+| `post_exposure` | `as_exposed` | straight out of the smoke chamber |
+| `post_exposure_aged` | `env_aging_<N>d` | after an N-day environmental aging step |
+| `post_treatment` | `as_exposed`, `env_aging_<N>d`, `PER`, `advanced_cleaning` | after its most-recent treatment (`none` not allowed) |
+
+So a paper of five as-exposed pieces of C205 is:
+
+```bash
+./scripts/camera/acquire_batch.sh \
+    --sample C205-1:as_exposed:post_exposure \
+    --sample C205-2:as_exposed:post_exposure \
+    --sample C205-3:as_exposed:post_exposure \
+    --sample C205-4:as_exposed:post_exposure \
+    --sample C205-5:as_exposed:post_exposure
+```
+
+Optional flags:
+
+| Flag | Default | Purpose |
+|---|---|---|
+| `--reps N`   | 2 | Frames to capture, all at 0°. |
+| `--name SLUG`| `batch_<sampleID>` (single sample) or `batch_<first>-<last>` | Batch folder / label slug. |
+| `--paper NAME` | `a3` | Sheet identifier recorded in the manifest. |
+| `--self-test` | off | Print the layout table and planned frames without firing. |
+
+The script prints the numbered layout table and pauses for `<enter>`. **Check the physical placement against the table before confirming** — this confirmation is the only check that positions and identities agree; the manifest it produces is the only link between pixels and piece identity.
+
+### 2-B.c Filenames produced per batch
+
+```
+data/raw/camera_sessions/2026-07-13/
+└── batch_C205_105447/
+    ├── batch_manifest.json      <- position → identity table + frame list
+    ├── 2026-07-13-105502-batch_C205_r01.cr3
+    ├── 2026-07-13-105502-batch_C205_r01.jpg
+    ├── 2026-07-13-105502-batch_C205_r01.log
+    ├── 2026-07-13-105512-batch_C205_r02.cr3
+    └── ...
+```
+
+The analysis side currently extracts one specimen per frame, so batch frames are acquisition-only for now — the manifest's `positions` array and `reading_order` field carry everything a future multi-piece split needs. Getting the declared order right at capture time is therefore critical.
+
+---
+
 ## 3. Which flag combinations to use
 
 The shape of `acquire_case.sh` always boils down to choosing four values. The two combinations you will see most often:
@@ -145,11 +230,22 @@ Per case (n times):
     Stage specimen on BWblue backdrop, top edge up, ColorChecker at right of A3.
     ./scripts/camera/acquire_case.sh \
         --test C### \
-        --coupon  {parent | left | center | right} \
+        --coupon  {parent | left | center | right
+                   | left_center | center_right | left_center_right} \
         --treatment {none | as_exposed | env_aging_<N>d | PER | advanced_cleaning} \
         --stage   {pre_exposure | post_exposure | post_exposure_aged | post_treatment}
     <when prompted, rotate the specimen 180° and press enter>
     Remove specimen, stage next case.
+
+Per batch paper (several pieces in one frame, 0° only):
+    Stage pieces in reading order (top-left → right, row-major), tops up,
+    ColorChecker at right of the sheet.
+    ./scripts/camera/acquire_batch.sh \
+        --sample C###-1:<treatment>:<stage> \
+        --sample C###-2:<treatment>:<stage> \
+        ...
+    <check the layout table against the paper, then press enter>
+    Remove pieces, stage next paper.
 
 After session:
     Skim *.log files for ERROR.
