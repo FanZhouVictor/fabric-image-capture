@@ -43,6 +43,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CASE_SCRIPT="$SCRIPT_DIR/acquire_decon_case.sh"
+[[ -x "$CASE_SCRIPT" ]] || { echo "acquire_decon_case.sh not found or not executable next to this script ($CASE_SCRIPT)" >&2; exit 1; }
 
 TEST=""
 AGING=""
@@ -60,7 +61,9 @@ while [[ $# -gt 0 ]]; do
     --aging)             AGING="$2"; shift 2 ;;
     --stage)             STAGE="$2"; shift 2 ;;
     --piece)             PIECES+=("$2"); shift 2 ;;
-    --baseline)          BASELINE_ID="$2"; shift 2 ;;
+    --baseline)          [[ -n "${2:-}" && "${2:-}" != --* ]] \
+                           || { echo "--baseline needs a decon ID here (e.g. --baseline EM4P1P); the bare --baseline flag belongs to acquire_decon_case.sh" >&2; exit 1; }
+                         BASELINE_ID="$2"; shift 2 ;;
     --reps-per-rotation) FORWARD+=(--reps-per-rotation "$2"); shift 2 ;;
     --rotations)         FORWARD+=(--rotations "$2"); shift 2 ;;
     --self-test)         SELF_TEST=1; FORWARD+=(--self-test); shift ;;
@@ -123,6 +126,7 @@ if [[ "$SELF_TEST" -eq 0 && ! -t 0 ]]; then
 fi
 
 first=1
+captured=0
 run_case() {
   local what="$1"; shift
   if [[ "$SELF_TEST" -eq 0 ]]; then
@@ -145,6 +149,7 @@ run_case() {
   fi
   first=0
   "$CASE_SCRIPT" "$@" ${FORWARD[@]+"${FORWARD[@]}"}
+  captured=$((captured + 1))
 }
 
 for tup in ${PIECES[@]+"${PIECES[@]}"}; do
@@ -165,7 +170,14 @@ if [[ -n "$BASELINE_ID" ]]; then
     --baseline --decon-id "$BASELINE_ID" --aging "$AGING" --stage "$STAGE"
 fi
 
+if [[ "$captured" -eq 0 ]]; then
+  echo ""
+  echo "[acquire_decon_set] NO CAPTURES — every declared piece is a no_decon control (skipped" >&2
+  echo "[acquire_decon_set] at post_wash) and no --baseline was declared. Nothing was photographed." >&2
+  exit 1
+fi
+
 echo ""
 echo "[acquire_decon_set] ============================================================"
-echo "[acquire_decon_set]   SET COMPLETE ── $TEST / aging $AGING / $STAGE"
+echo "[acquire_decon_set]   SET COMPLETE ── $TEST / aging $AGING / $STAGE ($captured piece(s))"
 echo "[acquire_decon_set] ============================================================"

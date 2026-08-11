@@ -28,6 +28,8 @@ Every capture is identified by six axes, all baked into the case slug and record
 | Washed or not | `--decon` | `yes` / `no` | `yes` = goes through the decontamination wash; `no` = unwashed control. Baseline is always `yes` |
 | Wash stage | `--stage` | `pre_wash` / `post_wash` | Before / after the decontamination wash |
 
+Watch the `--baseline` spelling — it differs between the two scripts: in `acquire_decon_case.sh` it is a bare flag and the ID goes in `--decon-id` (`--baseline --decon-id EM4P1P`); in `acquire_decon_set.sh` it takes the ID directly (`--baseline EM4P1P`).
+
 Case slugs come out as:
 
 ```
@@ -53,9 +55,10 @@ The decon scripts use the same camera, profile, and jig as the main study, so th
 1. Warm up the light-box LEDs for at least 20 minutes.
 2. Check the camera per [`docs/camera_setup_checklist.md`](../../../docs/camera_setup_checklist.md) (MF, IS off, mode dial M, zoom taped at 50 mm).
 3. Plug in the camera while it is off, power it on, keep EOS Utility 3 **closed**.
-4. **Run the preflight once per session** — required before any decon capture:
+4. **Run the preflight once per session** — required before any decon capture (from the repo root):
 
    ```bash
+   cd fabric-image-capture
    ./scripts/camera/preflight_camera.sh
    ```
 
@@ -122,7 +125,7 @@ Wash the pieces, dry them per protocol, then repeat with `--stage post_wash`:
 
 ### Unwashed control piece
 
-If a piece is held back from the wash, mark it `no_decon`. It is photographed at `pre_wash` and skipped automatically at `post_wash`:
+If a piece is held back from the wash, mark it as an unwashed control — `--decon no` in the single-case script, `:no_decon` in a set tuple (the manifest records it as `"goes_through_decon": false`). It is photographed at `pre_wash` and skipped automatically at `post_wash`:
 
 ```bash
 # pre_wash: captured, recorded as an unwashed control

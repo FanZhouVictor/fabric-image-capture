@@ -42,14 +42,15 @@ You must **quit EOS Utility 3** before running anything. Only one process can ow
 
 ## Which script do I use?
 
-There are two capture scripts. Pick by what is physically in the frame:
+There are three capture workflows. Pick by what is physically in the frame:
 
 | What is in the frame | Script | Frames captured |
 |---|---|---|
 | **One** specimen alone — identified without a sub number, e.g. parent `C187` or one coupon strip | `acquire_case.sh` | 4 per case: 2 at 0°, then 2 after you rotate the specimen 180° |
 | **Several** sub-numbered pieces of one test staged together on one paper, e.g. `C205-1` … `C205-5` | `acquire_batch.sh` | 2 per paper (default), all at 0° — no rotation |
+| A **decontamination-workflow** piece alone — `piece1`…`piece4` cut from a contaminated parent, or a pure-fabric baseline piece, before/after the decon wash | `decon_related/` — see [`scripts/camera/decon_related/README.md`](scripts/camera/decon_related/README.md) | 4 per case, same rotation protocol as `acquire_case.sh` |
 
-A single sub-numbered piece alone in the frame is supported by neither script — message Fan if you run into that.
+A single sub-numbered piece alone in the frame is supported by none of these — message Fan if you run into that.
 
 ### Mode 1 — one specimen per frame: `acquire_case.sh`
 

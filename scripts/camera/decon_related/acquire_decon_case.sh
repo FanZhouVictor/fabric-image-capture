@@ -23,12 +23,13 @@
 #   data/raw/camera_sessions/YYYY-MM-DD/
 #     <case_slug>_<HHMMSS>/
 #       decon_case_manifest.json
-#       rot_0deg/   <ts>_<case_slug>_0deg_r01.{cr3,jpg,log}
-#                   <ts>_<case_slug>_0deg_r02.{cr3,jpg,log}
-#       rot_180deg/ <ts>_<case_slug>_180deg_r01.{cr3,jpg,log}
-#                   <ts>_<case_slug>_180deg_r02.{cr3,jpg,log}
+#       rot_0deg/   <ts>-<case_slug>_0deg_r01.{cr3,jpg,log}
+#                   <ts>-<case_slug>_0deg_r02.{cr3,jpg,log}
+#       rot_180deg/ <ts>-<case_slug>_180deg_r01.{cr3,jpg,log}
+#                   <ts>-<case_slug>_180deg_r02.{cr3,jpg,log}
 #
-# where <case_slug> encodes the six naming axes:
+# where <ts> is the YYYY-MM-DD-HHMMSS capture timestamp (written by
+# capture.sh) and <case_slug> encodes the six naming axes:
 #
 #   contaminated piece: <test>_<piece>_<deconID>_aging_<N>d_<decon|no_decon>_<stage>
 #   baseline piece:     baseline_<deconID>_aging_<N>d_decon_<stage>
@@ -67,6 +68,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 OUTPUT_ROOT="${CAMERA_OUTPUT_ROOT:-$PROJECT_ROOT/data/raw/camera_sessions}"
 CAPTURE="$SCRIPT_DIR/../capture.sh"
+[[ -x "$CAPTURE" ]] || { echo "capture.sh not found or not executable at $CAPTURE — this folder must live inside the fabric-image-capture repo" >&2; exit 1; }
 
 REPS_PER_ROTATION=2
 ROTATIONS=(0 180)
@@ -94,7 +96,11 @@ while [[ $# -gt 0 ]]; do
     --rotations)         IFS=' ' read -ra ROTATIONS <<< "$2"; shift 2 ;;
     --self-test)         SELF_TEST=1; shift ;;
     -h|--help)           usage ;;
-    *)                   echo "unknown argument: $1" >&2; usage ;;
+    *)                   echo "unknown argument: $1" >&2
+                         echo "hint: --baseline takes no value here — the decon ID goes in --decon-id" >&2
+                         echo "      (e.g. --baseline --decon-id EM4P1P). Only acquire_decon_set.sh" >&2
+                         echo "      uses the --baseline <deconID> form." >&2
+                         usage ;;
   esac
 done
 
@@ -127,6 +133,22 @@ fi
 # "after washing" state to photograph.
 if [[ "$STAGE" == "post_wash" && "$DECON" == "no" ]]; then
   echo "post_wash stage requires --decon yes (an unwashed control has no after-wash state)" >&2; exit 1
+fi
+
+# Validate the protocol overrides before anything touches the filesystem —
+# a bad value here would otherwise fail mid-capture and leave a half-filled
+# case folder with no manifest.
+[[ ${#ROTATIONS[@]} -ge 1 ]] || { echo "--rotations needs at least one value: \"0\" or \"0 180\"" >&2; exit 1; }
+for rot in "${ROTATIONS[@]}"; do
+  [[ "$rot" =~ ^[0-9]+$ ]]   || { echo "--rotations values must be numeric degrees: \"0\" or \"0 180\" (got '$rot')" >&2; exit 1; }
+done
+[[ "$REPS_PER_ROTATION" =~ ^[1-9][0-9]*$ ]] \
+                             || { echo "--reps-per-rotation must be a positive integer" >&2; exit 1; }
+
+# The 180° pause below needs an operator at the keyboard.
+if [[ "$SELF_TEST" -eq 0 && ${#ROTATIONS[@]} -gt 1 && ! -t 0 ]]; then
+  echo "stdin is not a TTY — the 180° rotation pause needs an operator; aborting before any capture." >&2
+  exit 1
 fi
 
 [[ "$DECON" == "yes" ]] && DECON_TOKEN="decon" || DECON_TOKEN="no_decon"
@@ -172,7 +194,7 @@ for rot in "${ROTATIONS[@]}"; do
     echo "[acquire_decon_case]            ColorChecker at the right edge of the A3 sheet."
     echo "[acquire_decon_case]   After the rotation, press <enter> to continue."
     echo "[acquire_decon_case] ============================================================"
-    read -r _
+    read -r _ || { echo "[acquire_decon_case] no confirmation received — aborting." >&2; exit 1; }
   fi
   for r in $(seq 1 "$REPS_PER_ROTATION"); do
     rr=$(printf "%02d" "$r")
